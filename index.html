@@ -1,571 +1,262 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>e+solutions Pricing Calculator</title>
   <style>
-    :root{
-      --muted:#5b6470; --text:#1c1f24; --accent:#ff9f1c; --accent-2:#ffb703;
-      --stroke:#eceff3; --ring:rgba(255,183,3,0.35); --shadow:0 14px 40px rgba(22,26,29,.10);
-      --ok:#18b26b; --warn:#b26b18; --err:#c0392b; --bg:#fffaf2; --card:#ffffff;
-      --chip:#fff7e0; --chip-border:#ffd166;
-      --pie1:#ffb703; --pie1s:#ffd166; --pie2:#ff9f1c; --pie2s:#ffd166;
-      --pie3:#fb8500; --pie3s:#ffb703; --pie4:#ffd166; --pie4s:#ffb703;
-      --export-pad:#ffffff;
-    }
-    *{ box-sizing:border-box }
-    html,body{ height:100% }
-    body{
-      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color:var(--text);
-      background:
-        radial-gradient(1400px 1000px at -10% -20%, #fff5df 0%, transparent 60%),
-        radial-gradient(1400px 1000px at 110% 130%, #ffefcc 0%, transparent 55%),
-        linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
-      min-height:100dvh;
-    }
-    .page{ max-width:1200px; margin:0 auto; padding:28px 16px 40px; }
-    .container{ width:100%; max-width:1100px; margin:0 auto; display:grid; grid-template-columns: 1.05fr 1fr; gap:18px; align-items:start; }
-    @media (max-width: 980px){ .container{ grid-template-columns: 1fr; } }
-    .card{ background:var(--card); border:1px solid var(--stroke); border-radius:16px; box-shadow:var(--shadow); padding:18px; }
-    .title{ display:flex; align-items:center; gap:10px; margin:0 0 10px 0; font-size:18px; letter-spacing:0.2px; }
-    .dot{ width:10px;height:10px;border-radius:50%;background:var(--accent); box-shadow:0 0 0 6px rgba(255,183,3,0.18); }
-    .subtle{ color:var(--muted); font-size:13px; }
-
-    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:10px; }
-    @media (max-width: 720px){ .grid{ grid-template-columns:1fr; } }
-    .field{ display:flex; flex-direction:column; gap:8px; padding:12px; background:#fffdfa; border:1px solid #ffe7b8; border-radius:12px; }
-    label{ font-size:13px; color:var(--muted); }
-    .badge{ font-size:11px; color:#5a3b00; background:linear-gradient(180deg, #ffe8b3, #ffd166); padding:2px 8px; border-radius:999px; border:1px solid #ffcf66; margin-left:6px; }
-    input[type="number"], input[type="email"], input[type="text"], select{
-      width:100%; padding:12px; border-radius:10px; border:1px solid #ffd166; background:#ffffff; color:var(--text);
-      outline:none; font-size:15px;
-    }
-    input:focus, select:focus{ border-color: var(--accent); box-shadow: 0 0 0 6px var(--ring); }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
-    .btn{ appearance:none; border:none; background:linear-gradient(180deg, var(--accent-2), var(--accent)); color:#1c1f24;
-      padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; box-shadow: 0 8px 20px rgba(255,159,28,0.35); }
-    .btn.secondary{ background:#fff; color:var(--text); border:1px solid #ffcf66; box-shadow:none; }
-    .status{ font-size:13px; margin-left:auto; color:var(--muted); }
-    .status.ok{ color:var(--ok); } .status.warn{ color:var(--warn); } .status.err{ color:var(--err); }
-
-    .export-frame{ background:var(--export-pad); padding:28px; border-radius:18px; }
-
-    .actions-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-    .downloads{ display:flex; gap:8px; }
-    .spacer{ height:20px; }
-
-    .list{ display:grid; gap:10px; border-radius:16px; }
-    .item{ display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid #ffe3a3; border-radius:12px; background:#fffdfa; font-size:14px; }
-    .item .val{ font-weight:800; letter-spacing:0.2px; }
-    .item.emph{ background:#fff6da; border-color:#ffd166; }
-    .item.soft{ background:#f8fafc; border-color:#eaecef; }
-
-    .chart-card{ margin-top:14px; padding:18px; border:1px solid #ffe3a3; border-radius:20px; background:#fffdf6; }
-    .chart-wrap{ display:grid; gap:8px; place-items:center; padding:8px; }
-
-    canvas.pie{
-      width:100%; max-width:560px; aspect-ratio:1/1; min-width:260px; min-height:260px;
-      display:block; background:#fffdf0; border-radius:16px; border:1px solid #ffe3a3;
-    }
-
-    .legend{ display:flex; flex-wrap:wrap; gap:8px 12px; justify-content:center; font-size:13px; color:#6b7280; }
-    .chip{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; background:#fff7e0; border:1px solid #ffd166; border-radius:999px; font-size:12px; color:#5a3b00; }
-    .swatch{ width:10px; height:10px; border-radius:3px; display:inline-block; }
-
-    .how-card{ background:#fffdf6; border:1px solid #ffe3a3; border-radius:16px; box-shadow:var(--shadow); padding:16px; margin-top:16px; display:none; }
-    .how-list{ margin:8px 0 0 0; padding-left:22px; color:#374151; }
-    .how-list li{ margin:8px 0; }
-    .note{ font-size:12px; color:#6b7280; margin-top:6px; }
+    :root { color-scheme: light dark; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin:0; padding:16px; line-height:1.45; }
+    .container { max-width: 880px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: 1.6rem; }
+    p.lead { margin: 0 0 16px; color: #555; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
+    label { display:block; font-weight:600; margin-bottom:6px; }
+    input, select, button, a.button { width:100%; font-size:16px; padding:10px; box-sizing:border-box; }
+    .actions { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+    button, a.button { background:#0a7a3f; color:#fff; border:none; border-radius:8px; cursor:pointer; text-decoration:none; text-align:center; }
+    button.secondary, a.secondary { background:#666; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .quote { margin-top:20px; border:1px solid #e3e3e3; border-radius:10px; padding:16px; background: #fafafa; }
+    .row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed #ddd; }
+    .row:last-child { border-bottom:0; }
+    .muted { color:#666; font-size:14px; }
+    .ok { color:#0a7a3f; }
+    .err { color:#b00020; }
+    .note { margin-top: 10px; font-size: 13px; color: #444; }
+    .totals { font-weight:700; }
   </style>
 </head>
 <body>
-  <div class="page">
-    <div class="container">
+  <div class="container">
+    <h1>e+solutions Pricing Calculator</h1>
+    <p class="lead">Click Submit to calculate, generate a PDF, and save everything (including the PDF link) to your sheet.</p>
 
-      <!-- Left: form -->
-      <section class="card" id="formCard">
-        <h2 class="title"><span class="dot"></span>e+solutions Pricing Calculator</h2>
-        <p class="subtle">Click Submit to calculate, generate a PDF, and save everything (including the PDF link) to your sheet.</p>
+    <div class="grid">
+      <div>
+        <label for="customerName">Name</label>
+        <input id="customerName" placeholder="Required" />
+      </div>
+      <div>
+        <label for="companyName">Company name</label>
+        <input id="companyName" placeholder="Required" />
+      </div>
+      <div>
+        <label for="customerEmail">Customer Email</label>
+        <input id="customerEmail" placeholder="Required" />
+      </div>
+      <div>
+        <label for="storageCbm">Storage in CBM</label>
+        <select id="storageCbm">
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+      <div>
+        <label for="inboundPieces">Monthly Inbound Pieces</label>
+        <input id="inboundPieces" type="number" min="0" inputmode="numeric" />
+      </div>
+      <div>
+        <label for="monthlyOrders">Monthly Orders (Outbound)</label>
+        <input id="monthlyOrders" type="number" min="0" inputmode="numeric" />
+        <div class="muted">Minimum required based on your storage tier: 100 orders/month.</div>
+      </div>
+      <div>
+        <label for="avgPieces">Average Pieces per Order</label>
+        <input id="avgPieces" type="number" min="1" inputmode="numeric" />
+      </div>
+      <div>
+        <label for="hktv">HKTVmall management?</label>
+        <select id="hktv">
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+      <div>
+        <label for="integration">System Integration?</label>
+        <select id="integration">
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+    </div>
 
-        <div class="grid">
-          <div class="field">
-            <label>Name <span class="badge">Required</span></label>
-            <input id="customerName" type="text" placeholder="Your full name" />
-          </div>
-          <div class="field">
-            <label>Company name <span class="badge">Required</span></label>
-            <input id="companyName" type="text" placeholder="Company Ltd." />
-          </div>
-          <div class="field">
-            <label>Customer Email <span class="badge">Required</span></label>
-            <input id="customerEmail" type="email" placeholder="customer@example.com" />
-          </div>
+    <div class="actions">
+      <button id="submitBtn">Submit</button>
+      <button id="clearBtn" class="secondary" type="button">Clear</button>
+      <a id="downloadPdf" class="button" href="#" download="quotation.pdf" style="display:none">Download PDF</a>
+    </div>
 
-          <div class="field">
-            <label>Storage in CBM <span class="badge">Required</span></label>
-            <select id="storageCbm"></select>
-          </div>
-          <div class="field">
-            <label>Monthly Inbound Pieces <span class="badge">Required</span></label>
-            <input id="inboundPieces" type="number" min="1" step="1" value="100" inputmode="numeric" />
-          </div>
-          <div class="field">
-            <label>Monthly Orders (Outbound) <span class="badge">Required</span></label>
-            <input id="monthlyOrders" type="number" min="1" step="1" value="100" inputmode="numeric" />
-            <div id="ordersMinInfo" class="subtle">Minimum required based on your storage tier: 100 orders/month.</div>
-          </div>
-          <div class="field">
-            <label>Average Pieces per Order <span class="badge">Required</span></label>
-            <input id="avgPieces" type="number" min="1" step="1" value="2" inputmode="numeric" />
-          </div>
-          <div class="field">
-            <label>HKTVmall management?</label>
-            <select id="hktv">
-              <option value="no" selected>No</option>
-              <option value="yes">Yes</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>System Integration?</label>
-            <select id="integration">
-              <option value="no" selected>No</option>
-              <option value="yes">Yes</option>
-            </select>
-          </div>
-        </div>
+    <div id="status" class="muted" role="status" aria-live="polite"></div>
 
-        <div class="row">
-          <button class="btn" id="submitBtn">Submit</button>
-          <button class="btn secondary" id="clearBtn" type="button">Clear</button>
-          <span class="status" id="serverStatus"></span>
-        </div>
-      </section>
+    <div id="quote" class="quote">
+      <div class="row"><div>Storage</div><div id="outStorage">HKD 0</div></div>
+      <div class="row"><div>Inbound Handling</div><div id="outInbound">HKD 0</div></div>
+      <div class="row"><div>Order Processing</div><div id="outOrders">HKD 0</div></div>
+      <div class="row"><div>HKTVmall management fee (if any)</div><div id="outHktv">HKD 0</div></div>
+      <div class="row totals"><div>Estimated Monthly Total</div><div id="outMonthly">HKD 0</div></div>
+      <div class="row"><div>One-time System Integration</div><div id="outIntegration">HKD 0</div></div>
+      <div class="row"><div>Refundable Deposit</div><div>HKD 7,000</div></div>
+      <div class="row totals"><div>Setup + First Month (includes refundable deposit)</div><div id="outSetupFirst">HKD 0</div></div>
+      <div class="row totals"><div>Normal Monthly Cost After First Month</div><div id="outNormalMonthly">HKD 0</div></div>
+    </div>
 
-      <!-- Right: exportable header + dashboard -->
-      <section class="card" aria-live="polite">
-        <div id="exportFrame" class="export-frame">
-          <div class="actions-row" id="dashHeader" style="display:none;">
-            <h3 class="title" style="margin:0;">
-              <span class="dot"></span>
-              <span id="dashTitle">Your personalised quotation</span>
-            </h3>
-            <div class="downloads">
-              <button class="btn secondary" id="downloadPdfBtn" type="button">Download PDF</button>
-            </div>
-          </div>
-
-          <div id="dashCard" style="display:none;">
-            <div class="spacer"></div>
-            <div id="dashWrap">
-              <div class="list" id="priceList">
-                <div class="item"><span>Storage</span><span class="val" id="vStorage">HKD 0</span></div>
-                <div class="item"><span>Inbound Handling</span><span class="val" id="vInbound">HKD 0</span></div>
-                <div class="item"><span>Order Processing</span><span class="val" id="vOrders">HKD 0</span></div>
-                <div class="item"><span>HKTVmall management fee (if any)</span><span class="val" id="vHKTV">HKD 0</span></div>
-                <div class="item emph"><span><strong>Estimated Monthly Total</strong></span><span class="val" id="vMonthly">HKD 0</span></div>
-                <div class="item"><span>One-time System Integration</span><span class="val" id="vIntegrationSetup">HKD 0</span></div>
-                <div class="item"><span>Refundable Deposit</span><span class="val" id="vDeposit">HKD 7,000</span></div>
-                <div class="item emph"><span><strong>Setup + First Month (includes refundable deposit)</strong></span><span class="val" id="vFirstMonth">HKD 0</span></div>
-                <div class="item soft"><span>Normal Monthly Cost After First Month</span><span class="val" id="vMonthlyAgain">HKD 0</span></div>
-              </div>
-
-              <div class="chart-card">
-                <div class="chart-wrap">
-                  <canvas id="pie" class="pie" width="560" height="560" aria-label="Monthly cost distribution pie chart" role="img"></canvas>
-                  <div class="legend" id="legend"></div>
-                </div>
-              </div>
-
-              <div class="how-card" id="howCard" style="display:none;">
-                <h3 class="title" style="font-size:16px; margin:0 0 4px 0;"><span class="dot"></span>How we calculate our prices</h3>
-                <ul class="how-list">
-                  <li>Storage: 15 HKD per CBM per day, billed up to 30 days/month; minimum 600 HKD/month.</li>
-                  <li>Inbound: 0.8 HKD per piece (we calculate with 100 pieces if you enter less).</li>
-                  <li>Order processing: 10 HKD per order including up to 2 pieces; +1.5 HKD for each additional piece.</li>
-                  <li>HKTVmall management fee: +800 HKD/month if selected.</li>
-                  <li>System Integration (first-time customers): 2,500 HKD one-time; refundable deposit: 7,000 HKD on first invoice.</li>
-                  <li>Monthly Orders minimum updates automatically based on your Storage CBM.</li>
-                </ul>
-                <div class="note">Estimates for planning; final billing depends on actual usage.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+    <div class="note">
+      <strong>How we calculate our prices</strong>
+      <ul>
+        <li>Storage: 15 HKD per CBM per day, billed up to 30 days/month; minimum 600 HKD/month.</li>
+        <li>Inbound: 0.8 HKD per piece (we calculate with 100 pieces if you enter less).</li>
+        <li>Order processing: 10 HKD per order including up to 2 pieces; +1.5 HKD for each additional piece.</li>
+        <li>HKTVmall management fee: +800 HKD/month if selected.</li>
+        <li>System Integration (first-time customers): 2,500 HKD one-time; refundable deposit: 7,000 HKD on first invoice.</li>
+        <li>Monthly Orders minimum updates automatically based on your Storage CBM.</li>
+        <li>Estimates for planning; final billing depends on actual usage.</li>
+      </ul>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" crossorigin="anonymous"></script>
-
   <script>
+    // Your Apps Script Web App URL (exec)
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzZF_RjZRsuPow8CbFzShbPmPopddQpAOAS_MbxNHN0au2Xvv6NxK5QOFqmcCfp6NWO/exec';
 
-    const DAYS_FOR_BILLING = 30;
-    const ORDER_MIN_BY_TIER = [];
+    // Safe getters
+    function getVal(sel){ return (document.querySelector(sel)?.value ?? '').toString().trim(); }
+    function getNum(sel){ const v = getVal(sel); const n = Number((v || '').replace(/,/g,'')); return Number.isFinite(n) ? n : 0; }
+    function formatHKD(n){ return 'HKD ' + (Math.round(Number(n) || 0)).toLocaleString('en-HK'); }
 
-    const nameEl = document.getElementById('customerName');
-    const companyEl = document.getElementById('companyName');
-    const emailEl = document.getElementById('customerEmail');
-    const storageSelect = document.getElementById('storageCbm');
-    const inboundEl = document.getElementById('inboundPieces');
-    const ordersEl = document.getElementById('monthlyOrders');
-    const avgPiecesEl = document.getElementById('avgPieces');
-    const hktvEl = document.getElementById('hktv');
-    const integrationEl = document.getElementById('integration');
-    const statusEl = document.getElementById('serverStatus');
+    function calc() {
+      const storageCbm = getNum('#storageCbm');
+      const inboundPieces = Math.max(100, getNum('#inboundPieces'));
+      const monthlyOrders = Math.max(100, getNum('#monthlyOrders'));
+      const avgPieces = Math.max(1, getNum('#avgPieces'));
+      const hktvmall = getVal('#hktv') === 'Yes';
+      const integration = getVal('#integration') === 'Yes';
 
-    const dashHeader = document.getElementById('dashHeader');
-    const dashCard = document.getElementById('dashCard');
-    const dashTitle = document.getElementById('dashTitle');
-    const howCard = document.getElementById('howCard');
+      const storage = Math.max(600, 15 * storageCbm * 30);
+      const inbound = 0.8 * inboundPieces;
+      const baseOrder = 10 * monthlyOrders;
+      const extraPieces = Math.max(0, avgPieces - 2) * 1.5 * monthlyOrders;
+      const orderProcessing = baseOrder + extraPieces;
+      const hktvFee = hktvmall ? 800 : 0;
 
-    const vStorage = document.getElementById('vStorage');
-    const vInbound = document.getElementById('vInbound');
-    const vOrders  = document.getElementById('vOrders');
-    const vHKTV    = document.getElementById('vHKTV');
-    const vMonthly = document.getElementById('vMonthly');
-    const vIntegrationSetup = document.getElementById('vIntegrationSetup');
-    const vDeposit = document.getElementById('vDeposit');
-    const vFirstMonth = document.getElementById('vFirstMonth');
-    const vMonthlyAgain = document.getElementById('vMonthlyAgain');
+      const monthlyTotal = storage + inbound + orderProcessing + hktvFee;
+      const integrationOneTime = integration ? 2500 : 0;
+      const refundableDeposit = 7000;
+      const setupFirst = monthlyTotal + integrationOneTime + refundableDeposit;
+      const normalMonthly = monthlyTotal;
 
-    const canvas = document.getElementById('pie');
-    const legend = document.getElementById('legend');
+      // Update UI
+      document.getElementById('outStorage').textContent = formatHKD(storage);
+      document.getElementById('outInbound').textContent = formatHKD(inbound);
+      document.getElementById('outOrders').textContent = formatHKD(orderProcessing);
+      document.getElementById('outHktv').textContent = formatHKD(hktvFee);
+      document.getElementById('outMonthly').textContent = formatHKD(monthlyTotal);
+      document.getElementById('outIntegration').textContent = formatHKD(integrationOneTime);
+      document.getElementById('outSetupFirst').textContent = formatHKD(setupFirst);
+      document.getElementById('outNormalMonthly').textContent = formatHKD(normalMonthly);
 
-    const COLORS = [
-      {fill:getComputedStyle(document.documentElement).getPropertyValue('--pie1').trim() || '#ffb703', stroke:getComputedStyle(document.documentElement).getPropertyValue('--pie1s').trim() || '#ffd166'},
-      {fill:getComputedStyle(document.documentElement).getPropertyValue('--pie2').trim() || '#ff9f1c', stroke:getComputedStyle(document.documentElement).getPropertyValue('--pie2s').trim() || '#ffd166'},
-      {fill:getComputedStyle(document.documentElement).getPropertyValue('--pie3').trim() || '#fb8500', stroke:getComputedStyle(document.documentElement).getPropertyValue('--pie3s').trim() || '#ffb703'},
-      {fill:getComputedStyle(document.documentElement).getPropertyValue('--pie4').trim() || '#ffd166', stroke:getComputedStyle(document.documentElement).getPropertyValue('--pie4s').trim() || '#ffb703'}
-    ];
-
-    for (let i=0; i<30; i++){
-      ORDER_MIN_BY_TIER.push((i+1)*100);
-      const opt = document.createElement('option');
-      opt.value = (i+1).toString();
-      opt.textContent = i===0 ? 'Storage (1 CBM or below)' : `Storage (over ${i} CBM to ${i+1} CBM)`;
-      storageSelect.appendChild(opt);
-    }
-    storageSelect.value = '1';
-
-    function currency(n){ return `HKD ${Number(n).toLocaleString(undefined, {maximumFractionDigits:0})}`; }
-    function parseIntSafe(v){ const n = parseInt(v,10); return Number.isFinite(n) && n>0 ? n : 0; }
-    function getTierIndex(){ const idx = parseInt(storageSelect.value, 10); return Math.min(30, Math.max(1, idx)) - 1; }
-
-    function updateOrdersMinHint(){
-      const minOrders = ORDER_MIN_BY_TIER[getTierIndex()];
-      document.getElementById('ordersMinInfo').textContent = `Minimum required based on your storage tier: ${minOrders} orders/month.`;
-      const curr = parseInt(ordersEl.value || '0', 10) || 0;
-      if (curr < minOrders) ordersEl.value = String(minOrders);
-    }
-    storageSelect.addEventListener('change', () => { updateOrdersMinHint(); safeRedraw(); });
-    updateOrdersMinHint();
-
-    function compute(){
-      const inboundApplied = Math.max(100, parseIntSafe(inboundEl.value) || 0);
-      const ordersApplied = Math.max(ORDER_MIN_BY_TIER[getTierIndex()], parseIntSafe(ordersEl.value) || 0);
-      const avgPieces = Math.max(1, parseIntSafe(avgPiecesEl.value) || 1);
-      const cbmUpper = parseInt(storageSelect.value,10);
-
-      const storageRaw = cbmUpper * 15 * DAYS_FOR_BILLING;
-      const storageCost = Math.max(600, storageRaw);
-      const inboundCost = inboundApplied * 0.8;
-
-      const extrasPerOrder = Math.max(0, avgPieces - 2);
-      const perOrderCost = 10 + (extrasPerOrder * 1.5);
-      const ordersCost = ordersApplied * perOrderCost;
-
-      const hktvCost = (hktvEl.value === 'yes') ? 800 : 0;
-
-      const monthlyTotal = storageCost + inboundCost + ordersCost + hktvCost;
-      const integrationSetup = (integrationEl.value === 'yes') ? 2500 : 0;
-      const deposit = 7000;
-      const firstMonthTotal = monthlyTotal + integrationSetup + deposit;
-      const monthlyAgain = monthlyTotal;
-
-      return { storageCost, inboundCost, ordersCost, hktvCost, monthlyTotal, integrationSetup, deposit, firstMonthTotal, monthlyAgain };
+      return { storage, inbound, orderProcessing, hktvFee, monthlyTotal, integrationOneTime, refundableDeposit, setupFirst, normalMonthly };
     }
 
-    function renderResults(r){
-      vStorage.textContent = currency(r.storageCost);
-      vInbound.textContent = currency(r.inboundCost);
-      vOrders.textContent  = currency(r.ordersCost);
-      vHKTV.textContent    = currency(r.hktvCost);
-      vMonthly.textContent = currency(r.monthlyTotal);
-      vIntegrationSetup.textContent = currency(r.integrationSetup);
-      vDeposit.textContent = currency(r.deposit);
-      vFirstMonth.textContent = currency(r.firstMonthTotal);
-      vMonthlyAgain.textContent = currency(r.monthlyAgain);
+    async function handleSubmit() {
+      try {
+        document.getElementById('status').className = 'muted';
+        document.getElementById('status').textContent = 'Calculating...';
+        const fig = calc();
 
-      const values = [r.storageCost, r.inboundCost, r.ordersCost, r.hktvCost];
-      drawPie(values); renderLegend(values);
-    }
+        // Read inputs
+        const name = getVal('#customerName');
+        const company = getVal('#companyName');
+        const email = getVal('#customerEmail');
+        const storageCbm = getNum('#storageCbm');
+        const inboundPieces = getNum('#inboundPieces');
+        const monthlyOrders = getNum('#monthlyOrders');
+        const avgPieces = getNum('#avgPieces');
+        const hktv = getVal('#hktv') || 'No';
+        const integration = getVal('#integration') || 'No';
 
-    function setupCanvasDPR(canvas){
-      const ctx = canvas.getContext('2d');
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
-      let rect = canvas.getBoundingClientRect();
-      let cssW = rect.width || 300;
-      let cssH = rect.height || 300;
-      canvas.width = Math.max(1, Math.round(cssW * dpr));
-      canvas.height = Math.max(1, Math.round(cssH * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      return { ctx, cssW, cssH, dpr };
-    }
-
-    function drawPie(values){
-      const { ctx, cssW, cssH } = setupCanvasDPR(canvas);
-
-      const size = Math.min(cssW, cssH);
-      const pad = size * 0.08;
-      const r = (size / 2) - pad;
-      const cx = size / 2;
-      const cy = size / 2;
-      const totalVal = values.reduce((a,b)=>a+b,0);
-      const twoPi = Math.PI * 2;
-
-      ctx.clearRect(0, 0, cssW, cssH);
-
-      ctx.beginPath();
-      ctx.arc(cx, cy, r + Math.max(2, size*0.01), 0, twoPi);
-      ctx.strokeStyle = 'rgba(255, 213, 102, 0.7)';
-      ctx.lineWidth = Math.max(2, size * 0.012);
-      ctx.stroke();
-
-      let start = -Math.PI/2;
-      values.forEach((val, i) => {
-        const frac = totalVal > 0 ? (val / totalVal) : 0;
-        const end = start + (frac * twoPi);
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, r, start, end);
-        ctx.closePath();
-        ctx.fillStyle = COLORS[i].fill;
-        ctx.fill();
-
-        if (frac > 0) {
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, start, end);
-          ctx.strokeStyle = COLORS[i].stroke;
-          ctx.lineWidth = Math.max(1, size * 0.008);
-          ctx.stroke();
-        }
-        start = end;
-      });
-
-      const cutR = r * 0.56;
-      ctx.save();
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.beginPath();
-      ctx.arc(cx, cy, cutR, 0, twoPi);
-      ctx.fill();
-      ctx.restore();
-      ctx.beginPath();
-      ctx.arc(cx, cy, cutR, 0, twoPi);
-      ctx.fillStyle = '#fff9ea';
-      ctx.fill();
-
-      const bigSize = Math.max(18, Math.round(size * 0.09));
-      ctx.fillStyle = '#1c1f24';
-      ctx.font = `900 ${bigSize}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(currency(totalVal), cx, cy - Math.max(6, size*0.015));
-
-      ctx.fillStyle = 'rgba(28,31,36,0.6)';
-      ctx.font = `700 ${Math.max(10, Math.round(size*0.035))}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-      ctx.fillText('Estimated Monthly Total', cx, cy + Math.max(10, size*0.035));
-    }
-
-    function renderLegend(values){
-      legend.innerHTML='';
-      const total = values.reduce((a,b)=>a+b,0) || 1;
-      ['Storage','Inbound','Orders','HKTVmall fee'].forEach((label,i)=>{
-        const chip=document.createElement('span'); chip.className='chip';
-        const sw=document.createElement('span'); sw.className='swatch'; sw.style.background=COLORS[i].fill;
-        const pct=((values[i]||0)/total)*100;
-        chip.appendChild(sw);
-        chip.appendChild(document.createTextNode(`${label}: ${currency(values[i]||0)} · ${pct.toFixed(1)}%`));
-        legend.appendChild(chip);
-      });
-    }
-
-    function safeRedraw(valuesOverride){
-      const doDraw = () => {
-        const parseMoney = (s)=> parseFloat(String(s).replace(/[^\d.]/g,'')) || 0;
-        const vals = valuesOverride || [vStorage, vInbound, vOrders, vHKTV].map(el=>parseMoney(el.textContent));
-        drawPie(vals); renderLegend(vals);
-      };
-      requestAnimationFrame(() => requestAnimationFrame(doDraw));
-    }
-    window.addEventListener('resize', () => safeRedraw());
-
-    // Submit full flow
-    async function handleSubmitAndTransmit(){
-      try{
-        // Validate inputs
-        const missing = [];
-        if (!nameEl.value.trim()) missing.push('Name');
-        if (!companyEl.value.trim()) missing.push('Company name');
-        if (!emailEl.value.trim()) missing.push('Customer Email');
-        if (!inboundEl.value.trim()) missing.push('Monthly Inbound Pieces');
-        if (!ordersEl.value.trim()) missing.push('Monthly Orders');
-        if (!avgPiecesEl.value.trim()) missing.push('Average Pieces per Order');
-        if (missing.length){
-          statusEl.textContent = 'Missing: ' + missing.join(', ');
-          statusEl.className = 'status err';
+        // Minimal client-side validation
+        if (!name || !company || !email) {
+          document.getElementById('status').textContent = 'Please fill in Name, Company, and Email.';
+          document.getElementById('status').className = 'err';
           return;
         }
 
-        // Compute and render so PDF shows same numbers
-        const r = compute();
-        renderResults(r);
-        dashHeader.style.display = 'flex';
-        dashCard.style.display = 'block';
-        howCard.style.display = 'block';
-        dashTitle.textContent = companyEl.value.trim() ? `Personalised quotation for: ${companyEl.value.trim()}` : 'Your personalised quotation';
-        safeRedraw();
+        // Build FormData — do NOT set Content-Type
+        const fd = new FormData();
+        fd.append('customerName', name);
+        fd.append('companyName', company);
+        fd.append('customerEmail', email);
+        fd.append('storageCbm', String(storageCbm));
+        fd.append('inboundPieces', String(inboundPieces));
+        fd.append('monthlyOrders', String(monthlyOrders));
+        fd.append('avgPieces', String(avgPieces));
+        fd.append('hktv', hktv);
+        fd.append('integration', integration);
 
-        // Quick probe to Hookdeck so you can see an immediate event
-        try {
-          const probe = new FormData();
-          probe.append('probe', 'submit_clicked');
-          probe.append('ts', new Date().toISOString());
-          await fetch(WEB_APP_URL, { method:'POST', body: probe });
-        } catch(e) {
-          console.warn('Probe failed:', e);
+        // Append calculated outputs (optional)
+        Object.entries(fig).forEach(([k,v]) => fd.append(k, String(Math.round(v))));
+
+        document.getElementById('status').textContent = 'Submitting to server...';
+        document.getElementById('submitBtn').disabled = true;
+
+        const res = await fetch(WEB_APP_URL, { method: 'POST', body: fd });
+        const text = await res.text();
+        console.log('Server raw response:', res.status, text);
+
+        let data;
+        try { data = JSON.parse(text); } catch(e) { data = { ok:false, raw:text }; }
+
+        if (res.ok && data && data.ok) {
+          document.getElementById('status').textContent = 'Saved successfully.' + (data.fileUrl ? ' PDF uploaded.' : '');
+          document.getElementById('status').className = 'ok';
+          if (data.fileUrl) {
+            const a = document.getElementById('downloadPdf');
+            a.href = data.fileUrl;
+            a.style.display = 'inline-block';
+          }
+        } else {
+          document.getElementById('status').textContent = 'Failed to save: ' + (data.error || text);
+          document.getElementById('status').className = 'err';
         }
-
-        // Generate PDF
-        statusEl.textContent = 'Generating PDF…';
-        statusEl.className = 'status warn';
-
-        const frame = document.getElementById('exportFrame');
-        await new Promise(res => requestAnimationFrame(()=>requestAnimationFrame(res)));
-        const canvas2 = await html2canvas(frame, { backgroundColor:'#ffffff', scale:2, useCORS:true, logging:false });
-
-        const { jsPDF } = window.jspdf;
-        if (!jsPDF) throw new Error('jsPDF not loaded');
-        const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
-        const pageW = pdf.internal.pageSize.getWidth();
-        const pageH = pdf.internal.pageSize.getHeight();
-        const ratio = Math.min(pageW / canvas2.width, pageH / canvas2.height);
-        const w = canvas2.width * ratio;
-        const h = canvas2.height * ratio;
-        const x = (pageW - w) / 2;
-        const y = (pageH - h) / 2;
-        pdf.addImage(canvas2.toDataURL('image/png'), 'PNG', x, y, w, h);
-
-        const filename = `eplus-quotation-${Date.now()}.pdf`;
-        const pdfBlob = pdf.output('blob');
-        console.log('PDF blob size:', pdfBlob.size);
-
-        // Build multipart body
-        statusEl.textContent = 'Uploading PDF and saving row…';
-        const generatedAt = new Date().toISOString();
-        const form = new FormData();
-        form.append('file', pdfBlob, filename);
-        form.append('filename', filename);
-        form.append('generated_at', generatedAt);
-        form.append('customer_name', nameEl.value.trim());
-        form.append('company_name', companyEl.value.trim());
-        form.append('customer_email', emailEl.value.trim());
-        form.append('storage_cbm', storageSelect.value);
-        form.append('monthly_inbound', inboundEl.value);
-        form.append('monthly_outbound', ordersEl.value);
-        form.append('avg_pieces_per_order', avgPiecesEl.value);
-        form.append('hktv', hktvEl.value);
-        form.append('system_integration', integrationEl.value);
-        form.append('calc_storage', r.storageCost);
-        form.append('calc_inbound_handling', r.inboundCost);
-        form.append('calc_order_processing', r.ordersCost);
-        form.append('calc_hktv_fee', r.hktvCost);
-        form.append('calc_monthly_total', r.monthlyTotal);
-        form.append('calc_integration_setup', r.integrationSetup);
-        form.append('calc_deposit', r.deposit);
-        form.append('calc_first_month_total', r.firstMonthTotal);
-        form.append('calc_monthly_again', r.monthlyAgain);
-
-        console.log('Submitting to Hookdeck…', WEB_APP_URL);
-        const resp = await fetch(WEB_APP_URL, { method:'POST', body: form });
-        const raw = await resp.text();
-        console.log('Server raw response:', resp.status, raw);
-
-        let data = null;
-        try { data = JSON.parse(raw); } catch {}
-        if (!resp.ok || !data || data.ok !== true) {
-          throw new Error(`Server did not confirm save. Status ${resp.status}. Body: ${raw}`);
-        }
-
-        statusEl.textContent = 'Saved. PDF link recorded in the sheet.';
-        statusEl.className = 'status ok';
-      }catch(err){
-        console.error('Submit+Transmit error:', err);
-        statusEl.textContent = 'Saving failed. Open DevTools console for details.';
-        statusEl.className = 'status err';
-        alert('Saving failed. Open DevTools console for details. Copy the error/body for me.');
+      } catch (err) {
+        console.error(err);
+        document.getElementById('status').textContent = 'Error: ' + (err?.message || err);
+        document.getElementById('status').className = 'err';
+      } finally {
+        document.getElementById('submitBtn').disabled = false;
       }
     }
 
-    // Download PDF for customer (local only, no transmit)
-    async function downloadPdfOnly(){
-      try{
-        const frame = document.getElementById('exportFrame');
-        await new Promise(res => requestAnimationFrame(()=>requestAnimationFrame(res)));
-        const canvas2 = await html2canvas(frame, { backgroundColor:'#ffffff', scale:2, useCORS:true, logging:false });
-
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
-        const pageW = pdf.internal.pageSize.getWidth();
-        const pageH = pdf.internal.pageSize.getHeight();
-        const ratio = Math.min(pageW / canvas2.width, pageH / canvas2.height);
-        const w = canvas2.width * ratio;
-        const h = canvas2.height * ratio;
-        const x = (pageW - w) / 2;
-        const y = (pageH - h) / 2;
-        pdf.addImage(canvas2.toDataURL('image/png'), 'PNG', x, y, w, h);
-
-        const filename = `eplus-quotation-${Date.now()}.pdf`;
-        pdf.save(filename);
-      }catch(err){
-        console.error('Download-only PDF error:', err);
-      }
+    function handleClear() {
+      ['#customerName','#companyName','#customerEmail','#inboundPieces','#monthlyOrders','#avgPieces'].forEach(sel => {
+        const el = document.querySelector(sel);
+        if (el) el.value = '';
+      });
+      document.getElementById('storageCbm').value = '0';
+      document.getElementById('hktv').value = 'No';
+      document.getElementById('integration').value = 'No';
+      document.getElementById('status').textContent = '';
+      document.getElementById('status').className = 'muted';
+      document.getElementById('downloadPdf').style.display = 'none';
+      calc();
     }
 
-    function clearAll(){
-      storageSelect.value = '1';
-      inboundEl.value = '100';
-      ordersEl.value = '100';
-      avgPiecesEl.value = '2';
-      hktvEl.value = 'no';
-      integrationEl.value = 'no';
-      nameEl.value = '';
-      companyEl.value = '';
-      emailEl.value = '';
-      statusEl.textContent = '';
-      statusEl.className = 'status';
-      updateOrdersMinHint();
+    document.getElementById('submitBtn').addEventListener('click', handleSubmit);
+    document.getElementById('clearBtn').addEventListener('click', handleClear);
 
-      const zero = 'HKD 0';
-      [vStorage, vInbound, vOrders, vHKTV, vMonthly, vIntegrationSetup, vFirstMonth, vMonthlyAgain].forEach(el => el.textContent = zero);
-      vDeposit.textContent = 'HKD 7,000';
-      safeRedraw([0,0,0,0]);
+    // Auto recalc
+    ['#storageCbm','#inboundPieces','#monthlyOrders','#avgPieces','#hktv','#integration']
+      .forEach(sel => document.querySelector(sel).addEventListener('input', calc));
 
-      dashHeader.style.display = 'none';
-      dashCard.style.display = 'none';
-      howCard.style.display = 'none';
-      window.scrollTo({ top:0, behavior:'smooth' });
-    }
-
-    document.getElementById('submitBtn').addEventListener('click', handleSubmitAndTransmit);
-    document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdfOnly);
-    document.getElementById('clearBtn').addEventListener('click', clearAll);
-
-    // Initial blank draw
-    safeRedraw([0,0,0,0]);
+    // First calculation
+    calc();
   </script>
 </body>
 </html>
