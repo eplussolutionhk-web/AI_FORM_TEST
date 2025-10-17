@@ -217,7 +217,7 @@
   <main>
     <section class="card">
       <h1>e+solutions Pricing Calculator</h1>
-      <p>Submit once—this generates a PDF, uploads it straight to Google Apps Script, and saves everything to your Google Sheet.</p>
+      <p>Submit to record the quote details straight into Google Sheets (no PDF upload).</p>
       <span class="badge" id="endpointBadge">Apps Script endpoint ready</span>
       <form id="quoteForm" novalidate>
         <div class="grid">
@@ -267,7 +267,6 @@
         </div>
         <div class="actions">
           <button type="submit" class="primary" id="submitBtn">Submit &amp; Save</button>
-          <button type="button" class="secondary" id="downloadBtn" disabled>Download PDF</button>
           <button type="button" class="secondary" id="resetBtn">Reset</button>
         </div>
         <div class="status" id="status"></div>
@@ -305,8 +304,6 @@
     </section>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" crossorigin="anonymous"></script>
   <script type="module">
     const APPS_SCRIPT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwL9iJefr4yhj5comoFOKrpWoKgRQCVF2wjL97q0gv3d4rfgF9AUbbHQljCBZCVA5l9/exec';
 
@@ -314,7 +311,6 @@
       const ui = {
         form: document.getElementById('quoteForm'),
         submit: document.getElementById('submitBtn'),
-        download: document.getElementById('downloadBtn'),
         reset: document.getElementById('resetBtn'),
         status: document.getElementById('status'),
         storageSelect: document.getElementById('storageCbm'),
@@ -341,8 +337,7 @@
           monthlyAgain: document.getElementById('outMonthlyAgain')
         },
         chart: document.getElementById('costChart'),
-        legend: document.getElementById('chartLegend'),
-        exportRoot: document.getElementById('quoteCard').parentElement
+        legend: document.getElementById('chartLegend')
       };
 
       const STORAGE_OPTIONS = Array.from({ length: 30 }, (_, idx) => ({
@@ -494,46 +489,13 @@
         ];
         drawChart(chartValues);
         renderLegend(chartValues);
+
+        return result;
       }
 
       function setStatus(type, message) {
         ui.status.className = `status ${type || ''}`;
         ui.status.textContent = message || '';
-      }
-
-      async function generatePdfBlob() {
-        await new Promise(resolve => requestAnimationFrame(resolve));
-
-        const screenshot = await html2canvas(ui.exportRoot, {
-          backgroundColor: '#ffffff',
-          scale: 0.75,
-          useCORS: true
-        });
-
-        const shrinkFactor = 0.7;
-        const helper = document.createElement('canvas');
-        helper.width = Math.floor(screenshot.width * shrinkFactor);
-        helper.height = Math.floor(screenshot.height * shrinkFactor);
-
-        const helperCtx = helper.getContext('2d', { willReadFrequently: true });
-        helperCtx.drawImage(screenshot, 0, 0, helper.width, helper.height);
-
-        const jpegDataUrl = helper.toDataURL('image/jpeg', 0.65);
-
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const ratio = Math.min(pageWidth / helper.width, pageHeight / helper.height);
-        const w = helper.width * ratio;
-        const h = helper.height * ratio;
-        const x = (pageWidth - w) / 2;
-        const y = (pageHeight - h) / 2;
-
-        pdf.addImage(jpegDataUrl, 'JPEG', x, y, w, h);
-
-        return pdf.output('blob');
       }
 
       async function submitHandler(event) {
@@ -545,48 +507,35 @@
           return;
         }
 
-        setStatus('ok', 'Calculating...');
-        updateQuote();
+        setStatus('ok', 'Calculating…');
+        const quote = updateQuote();
 
         ui.submit.disabled = true;
         ui.reset.disabled = true;
-        ui.download.disabled = true;
 
         try {
-          setStatus('ok', 'Generating PDF…');
-          const pdfBlob = await generatePdfBlob();
-          console.log('PDF size (bytes):', pdfBlob.size);
+          const payload = {
+            customerName: ui.name.value.trim(),
+            companyName: ui.company.value.trim(),
+            customerEmail: ui.email.value.trim(),
+            storageCbm: ui.storageSelect.value,
+            monthlyInbound: ui.inbound.value,
+            monthlyOutbound: ui.orders.value,
+            avgPiecesPerOrder: ui.avgPieces.value,
+            hktv: ui.hktv.value,
+            systemIntegration: ui.integration.value,
+            calc: quote,
+            submittedAt: new Date().toISOString()
+          };
 
-          const quote = computeQuote();
-          const payload = new FormData();
-          const filename = `eplus-quotation-${Date.now()}.pdf`;
+          setStatus('ok', 'Saving to Google Sheets…');
 
-          payload.append('file', pdfBlob, filename);
-          payload.append('filename', filename);
-          payload.append('generated_at', new Date().toISOString());
-          payload.append('customer_name', ui.name.value.trim());
-          payload.append('company_name', ui.company.value.trim());
-          payload.append('customer_email', ui.email.value.trim());
-          payload.append('storage_cbm', ui.storageSelect.value);
-          payload.append('monthly_inbound', ui.inbound.value);
-          payload.append('monthly_outbound', ui.orders.value);
-          payload.append('avg_pieces_per_order', ui.avgPieces.value);
-          payload.append('hktv', ui.hktv.value);
-          payload.append('system_integration', ui.integration.value);
-          payload.append('calc_storage', quote.storageCost);
-          payload.append('calc_inbound_handling', quote.inboundCost);
-          payload.append('calc_order_processing', quote.orderCost);
-          payload.append('calc_hktv_fee', quote.hktvCost);
-          payload.append('calc_monthly_total', quote.monthlyTotal);
-          payload.append('calc_integration_setup', quote.integration);
-          payload.append('calc_deposit', quote.deposit);
-          payload.append('calc_first_month_total', quote.firstInvoice);
-          payload.append('calc_monthly_again', quote.monthlyAgain);
-
-          setStatus('ok', 'Uploading to Apps Script…');
           const response = await fetch(APPS_SCRIPT_ENDPOINT, {
             method: 'POST',
-            body: payload,
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload),
             redirect: 'follow'
           });
 
@@ -600,31 +549,13 @@
             throw new Error((data && data.error) ? data.error : `Upload failed (HTTP ${response.status})`);
           }
 
-          setStatus('ok', 'Saved successfully. PDF link stored in Google Sheet.');
-          ui.download.disabled = false;
+          setStatus('ok', 'Saved successfully to Google Sheet.');
         } catch (error) {
           console.error(error);
           setStatus('err', error.message || 'Submission failed.');
         } finally {
           ui.submit.disabled = false;
           ui.reset.disabled = false;
-        }
-      }
-
-      async function downloadHandler() {
-        try {
-          const pdfBlob = await generatePdfBlob();
-          const pdfUrl = URL.createObjectURL(pdfBlob);
-          const a = document.createElement('a');
-          a.href = pdfUrl;
-          a.download = `eplus-quotation-${Date.now()}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(pdfUrl);
-        } catch (error) {
-          console.error(error);
-          setStatus('err', 'PDF download failed.');
         }
       }
 
@@ -654,7 +585,6 @@
 
       ui.form.addEventListener('submit', submitHandler);
       ui.reset.addEventListener('click', resetForm);
-      ui.download.addEventListener('click', downloadHandler);
 
       updateOrderMinimum();
       updateQuote();
