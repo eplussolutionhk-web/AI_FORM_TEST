@@ -217,8 +217,8 @@
   <main>
     <section class="card">
       <h1>e+solutions Pricing Calculator</h1>
-      <p>Submit once—this generates a PDF, uploads it through Hookdeck, and saves everything to your Google Sheet.</p>
-      <span class="badge" id="endpointBadge">Endpoint ready</span>
+      <p>Submit once—this generates a PDF, uploads it straight to Google Apps Script, and saves everything to your Google Sheet.</p>
+      <span class="badge" id="endpointBadge">Apps Script endpoint ready</span>
       <form id="quoteForm" novalidate>
         <div class="grid">
           <div class="field">
@@ -423,12 +423,7 @@
           return;
         }
 
-        const colors = [
-          '#ffb703',
-          '#ff9f1c',
-          '#fb8500',
-          '#ffd166'
-        ];
+        const colors = ['#ffb703', '#ff9f1c', '#fb8500', '#ffd166'];
         let startAngle = -Math.PI / 2;
 
         values.forEach((val, idx) => {
@@ -506,42 +501,41 @@
         ui.status.textContent = message || '';
       }
 
-async function generatePdfBlob() {
-  await new Promise(resolve => requestAnimationFrame(resolve));
+      async function generatePdfBlob() {
+        await new Promise(resolve => requestAnimationFrame(resolve));
 
-  // Render at a lower resolution straight from html2canvas
-  const screenshot = await html2canvas(ui.exportRoot, {
-    backgroundColor: '#ffffff',
-    scale: 0.75,      // less pixels than 1.0
-    useCORS: true
-  });
+        const screenshot = await html2canvas(ui.exportRoot, {
+          backgroundColor: '#ffffff',
+          scale: 0.75,
+          useCORS: true
+        });
 
-  // Downscale the screenshot even further before converting to JPEG
-  const shrinkFactor = 0.7; // 70% of the rendered size
-  const helper = document.createElement('canvas');
-  helper.width  = Math.floor(screenshot.width  * shrinkFactor);
-  helper.height = Math.floor(screenshot.height * shrinkFactor);
+        const shrinkFactor = 0.7;
+        const helper = document.createElement('canvas');
+        helper.width = Math.floor(screenshot.width * shrinkFactor);
+        helper.height = Math.floor(screenshot.height * shrinkFactor);
 
-  const helperCtx = helper.getContext('2d', { willReadFrequently: true });
-  helperCtx.drawImage(screenshot, 0, 0, helper.width, helper.height);
+        const helperCtx = helper.getContext('2d', { willReadFrequently: true });
+        helperCtx.drawImage(screenshot, 0, 0, helper.width, helper.height);
 
-  const jpegDataUrl = helper.toDataURL('image/jpeg', 0.65); // more aggressive compression
+        const jpegDataUrl = helper.toDataURL('image/jpeg', 0.65);
 
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
 
-  const pageWidth  = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const ratio      = Math.min(pageWidth / helper.width, pageHeight / helper.height);
-  const w          = helper.width * ratio;
-  const h          = helper.height * ratio;
-  const x          = (pageWidth - w) / 2;
-  const y          = (pageHeight - h) / 2;
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const ratio = Math.min(pageWidth / helper.width, pageHeight / helper.height);
+        const w = helper.width * ratio;
+        const h = helper.height * ratio;
+        const x = (pageWidth - w) / 2;
+        const y = (pageHeight - h) / 2;
 
-  pdf.addImage(jpegDataUrl, 'JPEG', x, y, w, h);
+        pdf.addImage(jpegDataUrl, 'JPEG', x, y, w, h);
 
-  return pdf.output('blob');
-}
+        return pdf.output('blob');
+      }
+
       async function submitHandler(event) {
         event.preventDefault();
 
@@ -589,10 +583,11 @@ async function generatePdfBlob() {
           payload.append('calc_first_month_total', quote.firstInvoice);
           payload.append('calc_monthly_again', quote.monthlyAgain);
 
-          setStatus('ok', 'Uploading via Hookdeck…');
-          const response = await fetch(HOOKDECK_ENDPOINT, {
+          setStatus('ok', 'Uploading to Apps Script…');
+          const response = await fetch(APPS_SCRIPT_ENDPOINT, {
             method: 'POST',
-            body: payload
+            body: payload,
+            redirect: 'follow'
           });
 
           const raw = await response.text();
@@ -602,7 +597,7 @@ async function generatePdfBlob() {
           try { data = JSON.parse(raw); } catch (_) {}
 
           if (!response.ok || !data || data.ok !== true) {
-            throw new Error(data && data.error ? data.error : `Upload failed (HTTP ${response.status})`);
+            throw new Error((data && data.error) ? data.error : `Upload failed (HTTP ${response.status})`);
           }
 
           setStatus('ok', 'Saved successfully. PDF link stored in Google Sheet.');
